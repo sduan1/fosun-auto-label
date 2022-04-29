@@ -212,7 +212,7 @@ def label_box(img, center_crop_size=600):
     npout = output.cpu().numpy()
     npout = normalize_array(npout)
     npout = npout[0, :, :]
-    v, i = torch.topk(torch.from_numpy(npout).flatten(), 5)
+    v, i = torch.topk(torch.from_numpy(npout).flatten(), 50)
     indexes = np.array(np.unravel_index(i.numpy(), npout.shape)).T
 
     candidates = indexes
