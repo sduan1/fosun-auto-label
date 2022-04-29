@@ -171,7 +171,7 @@ def label_cross(img, cuda=True, center_crop_size=300, num_of_candidates=10):
         json.dump(json_data, f)
 
 
-def label_box(img, center_crop_size=600):
+def label_box(img, center_crop_size=500):
     vline_kernel = torch.from_numpy(np.array([[-1, 2, -1],
                                               [-1, 2, -1],
                                               [-1, 2, -1]])).float()
