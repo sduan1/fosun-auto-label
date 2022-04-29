@@ -106,19 +106,29 @@ def to_json(points, image_name, image):
     return ret
 
 
+def normalize_array(a):
+    ret = (a-np.min(a)) / \
+        (np.max(a)-np.min(a))
+
+    return ret*255
+
+
 def label_cross(img, cuda=True, center_crop_size=400, num_of_candidates=10):
     kernel = cv2.imread('cross.png')
     kernel = cv2.cvtColor(kernel, cv2.COLOR_BGR2GRAY).astype(np.int16)
-    kernel = (255 - kernel)*100 - 2000
+    kernel = (255 - kernel)*100 - 3000
     kernel = torch.from_numpy(kernel).float()
     kernel = kernel.cuda() if cuda else kernel
 
-    image = cv2.imread(f'{ROOT_DIR}/{img}')
+    image = cv2.imread(f'{ROOT_DIR}/{img}').astype(np.int16)
     (h, w, c) = image.shape
     orig_img = cv2.imread(f'{ROOT_DIR}/{img}')
-    image = image[:, :, 1]
-    image = center_crop(image, (center_crop_size, center_crop_size))
+    image = normalize_array(image[:, :, 1]-image[:, :, 2])
+    # print(image.shape)
+    # image = image[:, :, 1]
 
+    image = center_crop(image, (center_crop_size, center_crop_size))
+    # ret,image = cv2.threshold(image, 100,255,cv2.THRESH_BINARY)
     image = torch.from_numpy(image)
     image = image.float().unsqueeze(0).unsqueeze(0)
     image = image.cuda() if cuda else image
@@ -137,15 +147,26 @@ def label_cross(img, cuda=True, center_crop_size=400, num_of_candidates=10):
     v, i = torch.topk(torch.from_numpy(
         output_numpy).flatten(), num_of_candidates)
     indexes = np.array(np.unravel_index(i.numpy(), output_numpy.shape)).T
+
+    # print(indexes)
+    # for i in indexes:
+    #     loc = (int(i[1]), int(i[0]))
+    #     output_numpy = cv2.circle(output_numpy, loc, radius=0, color=(255,255,255), thickness=5)
+    # cv2_imshow(output_numpy)
+
     candidates = indexes
-
     numpy_points = filter_candidates(candidates)
-
-    h_offset = (h-400)/2
-    w_offset = (w-400)/2
+    h_offset = (h-center_crop_size)/2
+    w_offset = (w-center_crop_size)/2
     labelme_points = [(x[1]+w_offset, x[0]+h_offset) for x in numpy_points]
-    print(labelme_points)
+
+    # for i in labelme_points:
+    #     loc = (int(i[0]), int(i[1]))
+    #     orig_img = cv2.circle(orig_img, loc, radius=0, color=(255,255,255), thickness=5)
+    # cv2_imshow(orig_img)
+
     json_data = to_json(labelme_points, img, orig_img)
+
     with open(f'{ROOT_DIR}/{img[0:-4]}.json', 'w') as f:
         json.dump(json_data, f)
 
