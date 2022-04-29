@@ -246,14 +246,14 @@ def main():
     print(f'finished labels: {len(json_files)}')
     image_files = [x for x in rootdir_files if '.jpg' in x]
     todo_files = [x for x in image_files if x[0:-4] not in json_names]
-    print(f'Todo: {len(image_files)} files')
+    print(f'Todo: {len(todo_files)} files')
     assert (len(json_files) + len(image_files) ==
             rootdir_len), 'Directory contains files other than \'jpg\' or \'json\''
 
     success = 0
     fail = 0
     fail_list = []
-    for i in tqdm(image_files):
+    for i in tqdm(todo_files):
         try:
             image_name = i[0:-4]
             if '-' in image_name:
