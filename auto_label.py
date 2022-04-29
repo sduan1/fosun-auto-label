@@ -242,7 +242,7 @@ def main():
 
     print(f'Directory files: {rootdir_len}')
     json_files = [x for x in rootdir_files if '.json' in x]
-    json_names = [x[0:-4] for x in json_files]
+    json_names = [x[0:-5] for x in json_files]
     print(f'finished labels: {len(json_files)}')
     image_files = [x for x in rootdir_files if '.jpg' in x]
     todo_files = [x for x in image_files if x[0:-4] not in json_names]
