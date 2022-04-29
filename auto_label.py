@@ -113,10 +113,10 @@ def normalize_array(a):
     return ret*255
 
 
-def label_cross(img, cuda=True, center_crop_size=300, num_of_candidates=10):
+def label_cross(img, cuda=True, center_crop_size=300, num_of_candidates=50):
     kernel = cv2.imread('cross.png')
     kernel = cv2.cvtColor(kernel, cv2.COLOR_BGR2GRAY).astype(np.int16)
-    kernel = (255 - kernel)*100 - 3000
+    kernel = (255 - kernel)*100 - 2000
     kernel = torch.from_numpy(kernel).float()
     kernel = kernel.cuda() if cuda else kernel
 
@@ -264,11 +264,12 @@ def main():
             fail_list.append(i)
             fail += 1
             print(f'WARNING: label of {i} failed:\n {e}')
+
+    print('Labeling of the following files has failed')
+    print(fail_list)
     print('--------------------------------')
     print(f'Task finished: success: {success} | fail: {fail} |')
     print('--------------------------------')
-    print('Labeling of the following files has failed')
-    print(fail_list)
 
 
 if __name__ == '__main__':
