@@ -192,7 +192,7 @@ def main():
 
     for i in image_files:
         image_name = i[0:-4]
-        if '_' in image_name:
+        if '-' in image_name:
             try:
                 label_cross(i)
             except Exception as e:
