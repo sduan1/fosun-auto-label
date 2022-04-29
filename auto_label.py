@@ -10,7 +10,7 @@ from PIL import Image, ImageOps
 import torchvision.transforms as transforms
 from torch.nn.functional import conv2d
 import json
-
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Auto labeler')
 parser.add_argument('--rootdir', type=str,
@@ -89,7 +89,7 @@ def to_json(points, image_name, image):
     for k, p in labeled_points.items():
         shape_data = {
             "label": k,
-            "points": list(p),
+            "points": [list(p)],
             "ground_id": None,
             "shape_type": "point",
             "flags": {}
@@ -113,7 +113,7 @@ def normalize_array(a):
     return ret*255
 
 
-def label_cross(img, cuda=True, center_crop_size=400, num_of_candidates=10):
+def label_cross(img, cuda=True, center_crop_size=300, num_of_candidates=10):
     kernel = cv2.imread('cross.png')
     kernel = cv2.cvtColor(kernel, cv2.COLOR_BGR2GRAY).astype(np.int16)
     kernel = (255 - kernel)*100 - 3000
@@ -171,9 +171,67 @@ def label_cross(img, cuda=True, center_crop_size=400, num_of_candidates=10):
         json.dump(json_data, f)
 
 
-def label_phil(img):
-    print('not yet implemented')
-    pass
+def label_box(img, center_crop_size=600):
+    vline_kernel = torch.from_numpy(np.array([[-1, 2, -1],
+                                              [-1, 2, -1],
+                                              [-1, 2, -1]])).float()
+    hline_kernel = torch.from_numpy(np.array([[-1, -1, -1],
+                                              [2, 2, 2],
+                                              [-1, -1, -1]])).float()
+    image = cv2.imread(f'{ROOT_DIR}/{img}')
+    (height, width, c) = image.shape
+    orig_img = cv2.imread(f'{ROOT_DIR}/{img}')
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    image = center_crop(
+        image, (center_crop_size, center_crop_size)).astype(np.int16)
+    image = torch.from_numpy(image)
+    image = image.float().unsqueeze(0).unsqueeze(0)
+    image = image.cuda()
+
+    output_v = conv2d(image, vline_kernel.unsqueeze(
+        0).unsqueeze(0).cuda(), padding='same')
+    output_h = conv2d(image, hline_kernel.unsqueeze(
+        0).unsqueeze(0).cuda(), padding='same')
+    v = output_v.cpu().squeeze().numpy()
+    h = output_h.cpu().squeeze().numpy()
+    combine = v+h
+    ret, combine = cv2.threshold(combine, 150, 255, cv2.THRESH_BINARY)
+
+    t_inner = torch.ones(11, 11)*-10
+    m1 = nn.ConstantPad2d(1, 10)
+    m2 = nn.ConstantPad2d(1, -10)
+    m3 = nn.ConstantPad2d(1, 10)
+    kernel = m3(m2(m1(t_inner)))
+    kernel = kernel.cuda()
+    combine = torch.from_numpy(combine).unsqueeze(0).float().cuda()
+    # combine = normalize_array(combine)
+
+    output = conv2d(combine, kernel.unsqueeze(
+        0).unsqueeze(0).cuda(), padding='same')
+
+    npout = output.cpu().numpy()
+    npout = normalize_array(npout)
+    npout = npout[0, :, :]
+    v, i = torch.topk(torch.from_numpy(npout).flatten(), 5)
+    indexes = np.array(np.unravel_index(i.numpy(), npout.shape)).T
+
+    candidates = indexes
+
+    numpy_points = filter_candidates(candidates)
+    print(numpy_points)
+    h_offset = (height-center_crop_size)/2
+    w_offset = (width-center_crop_size)/2
+    labelme_points = [(x[1]+w_offset, x[0]+h_offset) for x in numpy_points]
+
+    # for i in labelme_points:
+    #     loc = (int(i[0]), int(i[1]))
+    #     orig_img = cv2.circle(orig_img, loc, radius=0, color=(0,0,255), thickness=5)
+    # cv2_imshow(orig_img)
+
+    json_data = to_json(labelme_points, img, orig_img)
+
+    with open(f'{ROOT_DIR}/{img[0:-4]}.json', 'w') as f:
+        json.dump(json_data, f)
 
 
 def main():
@@ -190,15 +248,27 @@ def main():
     assert (len(json_files) + len(image_files) ==
             rootdir_len), 'Directory contains files other than \'jpg\' or \'json\''
 
-    for i in image_files:
-        image_name = i[0:-4]
-        if '-' in image_name:
-            try:
+    success = 0
+    fail = 0
+    fail_list = []
+    for i in tqdm(image_files):
+        try:
+            image_name = i[0:-4]
+            if '-' in image_name:
                 label_cross(i)
-            except Exception as e:
-                print(f'WARNING: label of {i} failed:\n {e}')
-        else:
-            label_phil(i)
+
+            else:
+                label_box(i)
+            success += 1
+        except Exception as e:
+            fail_list.append(i)
+            fail += 1
+            print(f'WARNING: label of {i} failed:\n {e}')
+    print('--------------------------------')
+    print(f'Task finished: success: {success} | fail: {fail} |')
+    print('--------------------------------')
+    print('Labeling of the following files has failed')
+    print(fail_list)
 
 
 if __name__ == '__main__':
