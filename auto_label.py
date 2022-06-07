@@ -17,6 +17,8 @@ parser.add_argument('--rootdir', type=str,
                     help='an integer for the accumulator')
 parser.add_argument('--orig_img_dir', type=str, help='original image root path')
 
+parser.add_argument('--task', type=str, help='cross or box', default='box')
+
 args = parser.parse_args()
 ROOT_DIR = args.rootdir
 
@@ -282,7 +284,10 @@ def main():
     for i in tqdm(todo_files):
         try:
             image_name = i[0:-4]
-            label_box(i)
+            if args.task=='box':
+                label_box(i)
+            else:
+                label_cross(i)
             # if '-' in image_name:
             #     label_cross(i)
 
