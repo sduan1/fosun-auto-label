@@ -6,3 +6,6 @@
 
 ## 用法
 ```python auto_label.py --rootdir <rootdir> --orig_img_dir <orig_img_dir> --task <box/cross>```
+
+## 注意
+自动标注脚本并不能百分之百标注成功，需要后期人工审核。
