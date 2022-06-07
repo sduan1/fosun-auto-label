@@ -5,4 +5,4 @@
 --task 任务（box 或 cross）box为方框鱼骨图， cross为十字鱼骨图
 
 ## 用法
-```python auto_label.py --rootdir <rootdir> -- orig_img_dir <orig_img_dir> --task <box/cross>```
+```python auto_label.py --rootdir <rootdir> --orig_img_dir <orig_img_dir> --task <box/cross>```
